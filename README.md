@@ -36,6 +36,16 @@ The launchers run `npm install` automatically the first time, which installs the
 
 The conversation is kept until you close the browser tab. Click **↺ New** to clear it.
 
+## Deploying (Railway or similar)
+
+The same server runs on hosting platforms. When the platform sets `PORT`, the server listens on all interfaces and skips opening a browser.
+
+1. Create a Railway project from this GitHub repo. Railway detects Node, runs `npm ci` and starts it with `npm start`. No build command is needed.
+2. Under **Variables**, add `ANTHROPIC_API_KEY` to enable the AI tutor. Never commit the key to the repo.
+3. Under **Settings → Networking**, generate a public domain.
+
+**Cost control:** a public URL means anyone who finds it can use the AI tutor on your key. Each visitor is limited to 20 questions per 10 minutes. You can change this with the `CHAT_RATE_LIMIT` and `CHAT_RATE_WINDOW_MIN` variables. Set a monthly spend limit in the Anthropic Console as well.
+
 ## Without the server
 
 Opening `index.html` directly still works for everything except inline video and the AI tutor. Videos then open in a new YouTube tab.

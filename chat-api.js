@@ -14,6 +14,21 @@ const MAX_BODY = 256 * 1024;      // bytes accepted per request
 const MAX_MESSAGES = 40;          // history sent per request
 const MAX_CHARS = 20000;          // per message (selections are trimmed client-side too)
 
+// Per-visitor limit, so a publicly hosted hub can't run up the API bill.
+// CHAT_RATE_LIMIT questions per CHAT_RATE_WINDOW_MIN minutes per IP (defaults: 20 per 10 minutes).
+const RATE_LIMIT = Number(process.env.CHAT_RATE_LIMIT) || 20;
+const RATE_WINDOW_MS = (Number(process.env.CHAT_RATE_WINDOW_MIN) || 10) * 60 * 1000;
+const hits = new Map();   // ip -> timestamps of recent questions
+function rateLimited(req) {
+  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const recent = (hits.get(ip) || []).filter(t => now - t < RATE_WINDOW_MS);
+  if (recent.length >= RATE_LIMIT) { hits.set(ip, recent); return true; }
+  recent.push(now); hits.set(ip, recent);
+  if (hits.size > 5000) for (const [k, v] of hits) if (!v.some(t => now - t < RATE_WINDOW_MS)) hits.delete(k);
+  return false;
+}
+
 const SYSTEM = `You are the AI tutor inside a CFA Level I Economics study hub used by undergraduate and CFA candidates.
 
 How to help:
@@ -85,8 +100,12 @@ async function handleChat(req, res) {
   res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' });
   const emit = obj => { if (!res.writableEnded) res.write(JSON.stringify(obj) + '\n'); };
 
+  if (rateLimited(req)) {
+    emit({ type: 'error', message: `You've asked a lot of questions in a short time. Please wait a few minutes and try again.` });
+    return res.end();
+  }
   if (!Anthropic || !status().configured) {
-    emit({ type: 'error', message: errorMessage(new Error('The AI tutor is not set up yet: add ANTHROPIC_API_KEY to the .env file, then restart the server.')) });
+    emit({ type: 'error', message: errorMessage(new Error('The AI tutor is not set up yet: set ANTHROPIC_API_KEY (in the .env file locally, or in your hosting platform\'s variables), then restart the server.')) });
     return res.end();
   }
 

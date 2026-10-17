@@ -6,7 +6,9 @@
    The AI tutor reads ANTHROPIC_API_KEY from a .env file in this folder (see .env.example).
 
    Options:  --port <n>   (default 8765, or the PORT env var)
-             --no-open    don't open a browser tab */
+             --no-open    don't open a browser tab
+   Hosted (Railway, Render, etc.): when the platform sets PORT, the server listens on all interfaces
+   (0.0.0.0) and doesn't try to open a browser. Override the bind address with HOST if needed. */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -22,12 +24,15 @@ try {
 const chat = require('./chat-api');
 
 const ROOT = __dirname;
-const HOST = '127.0.0.1';
+// Hosting platforms set PORT and route outside traffic to the container, so listen on all interfaces there;
+// locally, stay on loopback so the hub (and its AI tutor) isn't reachable from the network.
+const HOSTED = !!(process.env.PORT || process.env.RAILWAY_ENVIRONMENT);
+const HOST = process.env.HOST || (HOSTED ? '0.0.0.0' : '127.0.0.1');
 const args = process.argv.slice(2);
 const portArg = args.indexOf('--port');
 const PORT = Number(portArg >= 0 ? args[portArg + 1] : process.env.PORT) || 8765;
-const OPEN = !args.includes('--no-open');
-const HUB_URL = `http://${HOST}:${PORT}/index.html#/home`;
+const OPEN = !HOSTED && !args.includes('--no-open');
+const HUB_URL = `http://${HOSTED ? 'localhost' : HOST}:${PORT}/index.html#/home`;
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -61,8 +66,11 @@ const server = http.createServer((req, res) => {
 
   // AI tutor API. Only same-origin page requests (the hub itself) may call it.
   if (pathname.startsWith('/api/')) {
+    // Same-origin check: the page's Origin must match the host it was served from (works behind HTTPS proxies too)
     const origin = req.headers.origin;
-    if (origin && ![`http://${HOST}:${PORT}`, `http://localhost:${PORT}`].includes(origin)) return send(res, 403, 'Forbidden');
+    let sameOrigin = !origin;
+    try { sameOrigin = sameOrigin || new URL(origin).host === req.headers.host; } catch { sameOrigin = false; }
+    if (!sameOrigin) return send(res, 403, 'Forbidden');
     if (pathname === '/api/chat/status' && req.method === 'GET') return send(res, 200, JSON.stringify(chat.status()), TYPES['.json']);
     if (pathname === '/api/chat' && req.method === 'POST') return chat.handleChat(req, res);
     return send(res, 404, 'Not found');
@@ -103,6 +111,7 @@ function openBrowser(url) {
 server.on('error', err => {
   if (err.code === 'EADDRINUSE') {
     // most likely the hub is already running in another window: just open it
+    if (HOSTED) { console.error(`Port ${PORT} is already in use.`); process.exit(1); }
     console.log(`Port ${PORT} is already in use. The Study Hub is probably already running.`);
     console.log(`Opening ${HUB_URL}`);
     openBrowser(HUB_URL);
@@ -117,7 +126,7 @@ server.listen(PORT, HOST, () => {
   console.log('CFA Economics Study Hub is running.');
   console.log(`  ${HUB_URL}`);
   const st = chat.status();
-  console.log(st.configured ? `AI tutor: ready (${st.model}).` : 'AI tutor: not set up yet. Add ANTHROPIC_API_KEY to the .env file and restart (see README).');
+  console.log(st.configured ? `AI tutor: ready (${st.model}).` : `AI tutor: not set up yet. ${HOSTED ? 'Set the ANTHROPIC_API_KEY variable in your hosting dashboard and redeploy.' : 'Add ANTHROPIC_API_KEY to the .env file and restart (see README).'}`);
   console.log('Videos will play inside the page. Press Ctrl+C (or close this window) to stop.');
   openBrowser(HUB_URL);
 });
