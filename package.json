@@ -1,0 +1,21 @@
+{
+  "name": "cfa-economics-study-hub",
+  "version": "1.0.0",
+  "description": "CFA Level I Economics study hub, served locally so embedded YouTube videos play and the AI tutor can call Claude.",
+  "private": true,
+  "main": "server.js",
+  "bin": {
+    "cfa-study-hub": "server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "serve": "node server.js --no-open"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0"
+  }
+}
