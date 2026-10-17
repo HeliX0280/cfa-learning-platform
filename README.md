@@ -40,6 +40,10 @@ The conversation is kept until you close the browser tab. Click **↺ New** to c
 
 Opening `index.html` directly still works for everything except inline video and the AI tutor. Videos then open in a new YouTube tab.
 
+## Static package (no server)
+
+A front-end-only edition (no Node server, no AI tutor) is published as a zip on the repository's **Releases** page. Open its `index.html` directly, or upload the folder to any static host (GitHub Pages, Netlify); hosted, the videos play inline with checkpoint questions. To rebuild it: `npm run build:static`, which writes `dist/cfa-study-hub-static.zip`.
+
 ## Progress
 
 Progress (sections read, quiz answers, notes, videos watched) is saved in your browser. Browsers keep it separately for each address, so progress made at `http://127.0.0.1:8765` and progress made from the opened file are tracked separately. Using the server every time keeps it in one place.
@@ -53,3 +57,4 @@ Progress (sections read, quiz answers, notes, videos watched) is saved in your b
 - `server.js`, `package.json`: the local server
 - `chat-api.js`: the server side of the AI tutor (calls Claude using the key from `.env`)
 - `.env.example`: template for your API key (`.env` itself is private and git-ignored)
+- `scripts/build-static.js`: builds the static package into `dist/`

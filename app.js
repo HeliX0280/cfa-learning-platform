@@ -16,6 +16,8 @@
   ];
   const TYPE_LABELS = { mcq: 'MCQ', match: 'Match the Following', tf: 'True / False', classify: 'Classify It', video: 'Video checkpoints' };
   const LETTERS = 'ABCDEFGHIJKL';
+  // The static package (no Node server, no AI tutor) sets window.HUB_EDITION = 'static' in its index.html
+  const STATIC = window.HUB_EDITION === 'static';
   const PAIR_COLORS = ['#2f6fdf', '#d9480f', '#2b8a3e', '#ae3ec9', '#c2255c', '#0c8599', '#b35c00', '#5f3dc4', '#5c7cfa', '#868e96'];
 
   const $main = document.getElementById('main');
@@ -386,7 +388,9 @@
       <h2>${tab.heading || 'Videos'}</h2>
       ${tab.intro ? `<p class="muted">${tab.intro}</p>` : ''}
       <div class="video-summary"><span>${tab.videos.length} videos</span><span>${Math.round(total / 60)} min total</span><span>${cpTotal} checkpoint questions</span><span class="w-count"></span></div>
-      ${local ? `<div class="callout file-note"><strong>Interactive checkpoints need the Study Hub server.</strong> Opened from a file, videos open in a new YouTube tab and the checkpoint questions are listed under each video instead. To get videos that pause for questions, start the server: double-click <code>Start Study Hub.command</code> (Mac) or run <code>npm start</code> in the <code>cfa-economics</code> folder. Opening <code>index.html</code> then switches to it automatically.</div>` : ''}
+      ${local ? `<div class="callout file-note">${STATIC
+        ? '<strong>Interactive checkpoints need the files to be hosted on a web address.</strong> Opened from a file, videos open in a new YouTube tab and the checkpoint questions are listed under each video instead. Upload this folder to any static host (GitHub Pages, Netlify, a school web server) to get videos that pause for questions.'
+        : '<strong>Interactive checkpoints need the Study Hub server.</strong> Opened from a file, videos open in a new YouTube tab and the checkpoint questions are listed under each video instead. To get videos that pause for questions, start the server: double-click <code>Start Study Hub.command</code> (Mac) or run <code>npm start</code> in the <code>cfa-economics</code> folder. Opening <code>index.html</code> then switches to it automatically.'}</div>` : ''}
       <nav class="video-jump" aria-label="Jump to video">${tab.videos.map((v, i) => `<a href="#" data-jump="${v.id}">${i + 1}. ${v.topic}</a>`).join('')}</nav>
       ${tab.videos.map((v, i) => `
         <article class="card video-card" id="vid-${v.id}">
@@ -416,7 +420,7 @@
           ${local && (v.checkpoints || []).length ? `<details class="explain" open><summary>Checkpoint questions (${v.checkpoints.length})</summary><div class="explain-body cp-static"></div></details>` : ''}
           ${v.sections.map(s => `<details class="explain"><summary>${s.title}</summary><div class="explain-body">${s.html}</div></details>`).join('')}
         </article>`).join('')}
-      ${tab.footer || ''}`;
+      ${STATIC ? '' : tab.footer || ''}`;
 
     const count = () => {
       const n = tab.videos.filter(v => watched[v.id]).length;
